@@ -19,9 +19,15 @@ typedef struct node
 }
 node;
 
+void destroy(node *tmp);
 // Represents a trie
 node *root;
 node *ptr;
+FILE *file = NULL;
+int position = 0, x = 0;
+unsigned int counter = 0;
+
+
 
 // Loads dictionary into memory, returning true if successful else false
 bool load(const char *dictionary)
@@ -39,7 +45,7 @@ bool load(const char *dictionary)
     }
 
     // Open dictionary
-    FILE *file = fopen(dictionary, "r");
+    file = fopen(dictionary, "r");
     if (file == NULL)
     {
         unload();
@@ -56,27 +62,15 @@ bool load(const char *dictionary)
         ptr = root;
 
         // Going trough characters of the word
-        for (int i = 0, position = 0; i < strlen(word); i++)
+        for (int i = 0; i < strlen(word); i++)
         {
-            // Checking if the character is apostrophe
-            if (word[i] == '\'')
-            {
-                // Assigning position in the trie
-                position = word[i] - 13;
-            }
-
-            // Checking if the character is alphabetical
-            if (isalpha(word[i]) != 0)
-            {
-                // Assigning position in the trie
-                position = word[i] - 97;
-            }
-
+            // Getting position of the character
+            get_position(word[i]);
             // Checking if children is NULL, meaning not used yet
             if (ptr->children[position] == NULL)
             {
                 // Making a new node
-                node n* = malloc(sizeof(node));
+                node *n = malloc(sizeof(node));
 
                 // Checking if n is NULL
                 if (!n)
@@ -87,48 +81,34 @@ bool load(const char *dictionary)
                 // Setting the new node´s children to zero
                 for (int j = 0; j < N; j++)
                 {
-                n->children[j] = NULL;
+                    n->children[j] = NULL;
                 }
 
                 // Setting is_word to false
                 n->is_word = false;
 
-                // Assigning a pointer to the new node at the children position
                 ptr->children[position] = n;
-
-                // Updating root with the first letter, but only with the first
-                if (i == 0)
-                {
-                    root = ptr;
-                }
+                ptr = n;
 
                 // Marking the end of the word
                 if (i == strlen(word) - 1)
                 {
                     ptr->is_word = true;
+                    counter++;
                 }
-
-                // Changing pointer so that it points at the new node
-                else
-                {
-                     ptr = n;
-                }
-
             }
 
-            // If children is not NULL
+            // If children is not NULL, meaning already used
             else
             {
+                // Moving to the next node
+                ptr = ptr->children[position];
+
                 // Marking the end of the word
                 if (i == strlen(word) - 1)
                 {
                     ptr->is_word = true;
-                }
-
-                // Moving to the next node, if it is not the end of the word
-                else
-                {
-                ptr = ptr->children[position];
+                    counter++;
                 }
             }
 
@@ -146,21 +126,98 @@ bool load(const char *dictionary)
 // Returns number of words in dictionary if loaded else 0 if not yet loaded
 unsigned int size(void)
 {
-    // TODO
-    return 0;
+    if (counter > 0)
+    {
+        return counter;
+    }
+
+    else
+    {
+        return 0;
+    }
 }
 
 // Returns true if word is in dictionary else false
 bool check(const char *word)
 {
-    // TODO
+    // Initializing ptr
+    ptr = root;
+    // For every letter of the word
+    for (int i = 0, length = strlen(word); i < length; i++)
+    {
+        // Getting position of the character
+        get_position(word[i]);
+
+        // If NULL - word is not in dictionary = is misspelled
+        if (ptr->children[position] == NULL)
+        {
+            return false;
+        }
+
+        // Moving to the next node
+        else
+        {
+            ptr = ptr->children[position];
+        }
+
+
+        // Checking if the word is in dictionary
+        if (i == length - 1)
+        {
+            if (ptr->is_word == true)
+            {
+                return true;
+            }
+        }
+    }
     return false;
 }
 
 // Unloads dictionary from memory, returning true if successful else false
 bool unload(void)
 {
-    fclose(file);
-    return false;
+    destroy(root);
+    return true;
+}
+
+// Gives character position in trie, case sensitive
+int get_position(char index)
+{
+    // Checking if the character is apostrophe
+    if (index == '\'')
+    {
+        // Assigning position in the trie
+        position = index - 13;
+        return position;
+    }
+
+    // Checking if the character is alphabetical
+    else if (isalpha(index) != 0)
+    {
+        // Making sure it will be lower case output
+        index = tolower(index);
+
+        // Assigning position in the trie
+        position = index - 'a';
+        return position;
+    }
+    return 1;
+}
+
+void destroy(node *tmp)
+{
+     // Going through all the children nodes
+    for (int i = 0, number = 0; i < N; i++)
+    {
+        // If children node is not NULL, destroy it (recursion)
+        if (tmp->children[i] != NULL)
+        {
+            destroy(tmp->children[i]);
+        }
+    }
+
+    // At this point all the children nodes should be NULL
+    // Free current node
+    free(tmp);
 }
 
